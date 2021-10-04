@@ -4,8 +4,21 @@ import (
 	"sync"
 	"fmt"
 	"io"
+	"strings"
 	//"log"
+	"os"
 )
+
+func main() {
+	m := NewMaze(80,40)
+	wc := &WalkingCreator{}
+	wc.Fill(&m.grid, Coord{0,0}, Coord{m.x-1,m.y-1})
+	d := ConsoleRenderer{
+		dest: os.Stdout,
+	}
+	d.Draw(m)
+	fmt.Print("")
+}
 
 type Coord struct {
 	X, Y int
@@ -35,6 +48,8 @@ func (d Dims)CoordOf(i int) Coord {
 const (
 	Start = 1 << iota
 	Finish
+	Reverse
+	MaxPasses
 )
 
 type Loc struct {
@@ -92,7 +107,7 @@ func (g *Grid)Within(c Coord) (b bool) {
 			c.String(),
 			b)
 	}()*/
-	if c.X < 0 || c.Y < 0 {
+	if c.X < 0 || c.Y < 0 || c.Y >= g.dims.Y || c.X >= g.dims.X {
 		return false
 	}
 	return g.WithinIdx(g.Idx(c))
@@ -250,17 +265,43 @@ type ConsoleRenderer struct {
 }
 
 func (cr *ConsoleRenderer) Draw(m *Maze) {
+	var bordercolor = "\033[1;48;5;94;38;5;94m"
+	var opencolor = "\033[0;m"
+	var clear = "\033[0m"
+	var wall = "\u2588"
+	// header
+	fmt.Fprintf(cr.dest, "%s\n", m.grid.dims.String())
+	fmt.Fprint(cr.dest, bordercolor, strings.Repeat(wall, m.x+2), bordercolor, clear, "\n", bordercolor, wall)
+	// iterate over the elements, adding prefix and suffix to each lines wiht `oldx` rolls over
 	i, _ := m.Iter()
 	var oldx int = 0
 	for loc := range i {
 		if oldx > loc.X {
-			fmt.Fprint(cr.dest, "\n")
+			// newline and borders
+			fmt.Fprint(cr.dest, bordercolor, wall, clear, "\n", bordercolor, wall)
 		}
 		oldx = loc.X
-		var s = "\033[1;45m \033[0m"
+		//var s = fmt.Sprintf("\033[1;38;5;135m%s\033[0m", "\u2588")
+		var s = fmt.Sprint(bordercolor, wall)
 		if loc.Passable {
-			s = "\033[0;40m \033[0m"
+			s = fmt.Sprint(clear, opencolor, func() string {
+				if loc.Special & Start != 0 {
+					return "\033[32m" + "S"
+				}
+				if loc.Special & Finish != 0 {
+					return "\033[32m" + "F"
+				}
+				if loc.Special & MaxPasses != 0 {
+					return "\033[38;5;219m" + " "
+				}
+				if loc.Special & Reverse != 0 {
+					return "\033[38;5;212m" + " "
+				}
+				return " "
+			}(), clear )
 		}
 		fmt.Fprint(cr.dest, s)
 	}
+	//footer
+	fmt.Fprint(cr.dest, bordercolor, wall, clear, "\n", bordercolor, strings.Repeat(" ", m.x+2), clear, "\n")
 }

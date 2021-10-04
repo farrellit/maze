@@ -126,9 +126,9 @@ func TestConsoleRenderer(t *testing.T) {
 }
 
 func TestWalkingCreator(t *testing.T){
-	m := NewMaze(50,50)
+	m := NewMaze(50,20)
 	wc := &WalkingCreator{}
-	wc.Fill(&m.grid, Coord{0,0}, Coord{49,49})
+	wc.Fill(&m.grid, Coord{0,0}, Coord{m.x-1,m.y-1})
 	var b bytes.Buffer
 	d := ConsoleRenderer{
 		dest: &b,
