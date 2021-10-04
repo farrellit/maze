@@ -87,10 +87,10 @@ func (r *walkingCreatorRun) previousCandidateFilterFactory(
 				return false
 			}
 			for _, pc := range r.reverse_locations {
-					if pc == cn {
-						msg = fmt.Sprintf("%s neighbors reverse location %s so it brings us back to the finish", &c, &pc)
-						return false
-					}
+				if pc == cn {
+					msg = fmt.Sprintf("%s neighbors reverse location %s so it brings us back to the finish", &c, &pc)
+					return false
+				}
 			}
 			if r.g.At(cn).Passable {
 				// we already filtered out the passable reverse locations
@@ -172,7 +172,7 @@ func (wc *WalkingCreator) Fill(grid *Grid, start, finish Coord) {
 			return
 		} else if max_passes == 0 {
 			log.Printf("Max passes reached at %s, reverse completings", &cur)
-			grid.Update(func(l Loc)Loc{ l.Special = l.Special | MaxPasses; return l}, cur)
+			grid.Update(func(l Loc) Loc { l.Special = l.Special | MaxPasses; return l }, cur)
 			r.reverse = true
 			cur = finish
 			r.reverse_locations = append(r.reverse_locations, finish)
@@ -190,8 +190,8 @@ func (wc *WalkingCreator) Fill(grid *Grid, start, finish Coord) {
 			// we can choose a random qualified candidate
 			next := nexts.dest[rand.Intn(len(nexts.dest))]
 			grid.Update(MakePassable, next)
-			if r.reverse{
-				grid.Update(func(l Loc)Loc{ l.Special = l.Special | Reverse; return l}, next)
+			if r.reverse {
+				grid.Update(func(l Loc) Loc { l.Special = l.Special | Reverse; return l }, next)
 			}
 			if r.reverse {
 				r.reverse_locations = append(r.reverse_locations, cur)
