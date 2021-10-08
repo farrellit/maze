@@ -6,18 +6,31 @@ import (
 	"strings"
 	"sync"
 	//"log"
-	"os"
+	"net/http"
 )
 
 func main() {
-	m := NewMaze(80, 40)
-	wc := &WalkingCreator{}
-	wc.Fill(&m.grid, Coord{0, 0}, Coord{m.x - 1, m.y - 1})
-	d := ConsoleRenderer{
-		dest: os.Stdout,
-	}
-	d.Draw(m)
-	fmt.Print("")
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request){
+		m := NewMaze(82, 105)
+		wc := &WalkingCreator{}
+		wc.Fill(&m.grid, Coord{0, 0}, Coord{m.x - 1, m.y - 1})
+		//consd := ConsoleRenderer{
+		//	dest: os.Stdout,
+		//}
+		//svgf, err := os.OpenFile("maze.svg", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		//if err != nil {
+		//	panic(fmt.Errorf("Couldn't open svg file: %w", err))
+		//}
+		//defer svgf.Close()
+		svgd := SVGRenderer{
+			dest:  w,
+			scale: 25,
+		}
+		//consd.Draw(m)
+		fmt.Print("")
+		svgd.Draw(m)
+	})
+	panic(http.ListenAndServe("0.0.0.0:1801", nil))
 }
 
 type Coord struct {
@@ -29,6 +42,54 @@ func (c *Coord) String() string {
 		return "(undefined,undefined)"
 	}
 	return fmt.Sprintf("(%d,%d)", c.X, c.Y)
+}
+
+func (c *Coord) Diff(d Coord) Trans {
+	return Trans{d.X - c.X, d.Y - c.Y}
+}
+
+var (
+	Upper      = Trans{0, -1}
+	UpperRight = Trans{1, -1}
+	Right      = Trans{1, 0}
+	LowerRight = Trans{1, 1}
+	Lower      = Trans{0, 1}
+	LowerLeft  = Trans{-1, 1}
+	Left       = Trans{-1, 0}
+	UpperLeft  = Trans{-1, -1}
+)
+
+func (c *Coord) Rel(d Coord) (Trans, bool) {
+	switch diff := c.Diff(d); diff {
+	case Upper:
+		fallthrough
+	case UpperRight:
+		fallthrough
+	case Right:
+		fallthrough
+	case LowerRight:
+		fallthrough
+	case Lower:
+		fallthrough
+	case LowerLeft:
+		fallthrough
+	case Left:
+		fallthrough
+	case UpperLeft:
+		return diff, true
+	default:
+		return Trans{}, false
+	}
+}
+
+type Polygon []Coord
+
+func (p *Polygon) Unzip() (xs []int, ys []int) {
+	xs, ys = make([]int, len(*p)), make([]int, len(*p))
+	for i, c := range *p {
+		xs[i], ys[i] = c.X, c.Y
+	}
+	return
 }
 
 type Dims Coord
@@ -50,6 +111,7 @@ const (
 	Finish
 	Reverse
 	MaxPasses
+	CreateEnd
 )
 
 type Loc struct {
@@ -177,6 +239,55 @@ func (cc *coordCandidates) filter(f func(Coord) bool) {
 	}
 }
 
+const (
+		PassableUp = 1 << iota
+		PassableUpRight
+		PassableRight
+		PassableLowRight
+		PassableLow
+		PassableLowLeft
+		PassableLeft
+		PassableUpLeft
+)
+
+/*
+func (g *Grid) RelsPassable(loc Coord) (r int) {
+	for rel, _ := range g.Rels(loc) {
+		switch rel {
+		case Upper:
+			r &= PassableUp
+		case Lower:
+			r &= PassableLow
+		case UpperLeft:
+			r &= PassableUpLeft
+		case Left:
+			r &= PassableLeft
+		case LowerLeft:
+			r &= PassableLowLeft
+		case UpperRight:
+			r &= PassableUpRight
+		case Right:
+			r &= PassableRight
+		}
+	}
+}
+*/
+
+func (g *Grid) Rels(loc Coord) (ret map[Trans]Coord) {
+	ret = make(map[Trans]Coord, 8)
+	on, dn := g.Neighbors(loc)
+	for _, n := range append(on, dn...) {
+		if r, ok := loc.Rel(n); !ok {
+			panic(fmt.Errorf(
+				"(%s).Rels got Neighbor %s that was not related!  how can that be?",
+				&loc, &n))
+		} else {
+			ret[r] = n
+		}
+	}
+	return
+}
+
 // return orthogonals and diagonals separately
 func (g *Grid) Neighbors(loc Coord) ([]Coord, []Coord) {
 	ccs := []*coordCandidates{
@@ -255,7 +366,7 @@ func NewMaze(x, y int) (m *Maze) {
 }
 
 type Renderer interface {
-	Draw(*Maze) error
+	Draw(*Maze)
 }
 
 type ConsoleRenderer struct {
@@ -290,10 +401,10 @@ func (cr *ConsoleRenderer) Draw(m *Maze) {
 					return "\033[32m" + "F"
 				}
 				if loc.Special&MaxPasses != 0 {
-					return "\033[38;5;219m" + " "
+					return "\033[38;5;219m" + "*"
 				}
 				if loc.Special&Reverse != 0 {
-					return "\033[38;5;212m" + " "
+					return "\033[38;5;212m" + "r"
 				}
 				return " "
 			}(), clear)

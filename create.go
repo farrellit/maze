@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var logging bool
+
 type Trans Coord // translation along x and y
 
 func (t Trans) Translate(c Coord) Coord {
@@ -52,11 +54,13 @@ func (r *walkingCreatorRun) previousCandidateFilterFactory(
 ) func(Coord) bool { //Is this neighbor a possible previous?  We're tracing backwards to solve the maze
 	return func(c Coord) (b bool) {
 		var msg string
-		defer func() {
+		if logging {
+			defer func() {
 			log.Printf("Cur %s: Filter result for %s: %t (%s)",
 				cur.String(),
 				c.String(), b, msg)
-		}()
+			}()
+		}
 		if r.g.At(c).Passable {
 			// if we're working backwards and we've found a passable  candidate, we've
 			// complated the maze.
@@ -109,11 +113,11 @@ func (r *walkingCreatorRun) nextCandidateFilterFactory(
 ) func(Coord) bool {
 	return func(c Coord) (b bool) { //Is this neighbor a possible next?
 		var msg string
-		defer func() {
+		if logging { defer func() {
 			log.Printf("Cur %s: Filter result for %s: %t (%s)",
 				cur.String(),
 				c.String(), b, msg)
-		}()
+		}() }
 		if c == r.finish {
 			msg = "it's the finish (reached set to true)"
 			r.reached = true
@@ -171,7 +175,7 @@ func (wc *WalkingCreator) Fill(grid *Grid, start, finish Coord) {
 			// this should probably be a failure of somethign
 			return
 		} else if max_passes == 0 {
-			log.Printf("Max passes reached at %s, reverse completings", &cur)
+			if logging { log.Printf("Max passes reached at %s, reverse completings", &cur) }
 			grid.Update(func(l Loc) Loc { l.Special = l.Special | MaxPasses; return l }, cur)
 			r.reverse = true
 			cur = finish
@@ -206,10 +210,13 @@ func (wc *WalkingCreator) Fill(grid *Grid, start, finish Coord) {
 			}
 			last := cur
 			cur = r.reverse_locations[rand.Intn(len(r.reverse_locations))]
-			log.Printf("No candidates  backwards from %s, going to previous part of backwards path %s", last.String(), cur.String())
+			if logging {
+				log.Printf("No candidates  backwards from %s, going to previous part of backwards path %s", last.String(), cur.String())
+			}
 			continue
 		}
-		log.Printf("No candidates onward from %s", cur.String())
+		if logging { log.Printf("No candidates onward from %s", cur.String()) }
+		grid.Update(func(l Loc)Loc{l.Special = l.Special | CreateEnd; return l }, cur)
 		// so we'll "backtrack"
 		i := r.g.Idx(cur)
 		for !(i != r.g.Idx(cur) && i != r.g.Idx(start) &&
@@ -217,6 +224,6 @@ func (wc *WalkingCreator) Fill(grid *Grid, start, finish Coord) {
 			i = rand.Intn(grid.Len())
 		}
 		cur = grid.CoordOf(i)
-		log.Printf("Backtracking to %s: %+v", &cur, grid.At(cur))
+		if logging { log.Printf("Backtracking to %s: %+v", &cur, grid.At(cur)) }
 	}
 }
