@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	//"log"
+	"math/rand"
+	"time"
 	"net/http"
 	"strconv"
 )
@@ -25,7 +27,14 @@ func getQueryInt(r *http.Request, key string) (int, error) {
 	} else {
 		return strconv.Atoi(s[0])
 	}
+}
 
+func getQueryInt64(r *http.Request, key string) (int64, error) {
+	if s, ok := r.URL.Query()[key]; !ok {
+		return 0, queryParamNotFound
+	} else {
+		return strconv.ParseInt(s[0], 10, 64)
+	}
 }
 
 func main() {
@@ -34,6 +43,7 @@ func main() {
 		// TODO: shouldn't this be a POST?
 		// I think then redirect to a random maze URL
 		var x, y, scale int
+		var seed int64
 		var err error
 		if x, err = getQueryInt(r, "x"); err != nil {
 			x = 20
@@ -51,29 +61,27 @@ func main() {
 		if y > 128 {
 			y = 128
 		}
+		if seed, err = getQueryInt64(r, "seed"); err != nil {
+			rand.Seed(time.Now().UnixNano())
+			http.Redirect(w, r,
+				fmt.Sprintf("/api/maze?x=%d&y=%d&s=%d&seed=%d&", x, y, scale, rand.Int63()),
+				http.StatusSeeOther)
+			return
+		}
 		m := NewMaze(x, y)
-		wc := &WalkingCreator{}
+		wc := &WalkingCreator{seed: seed}
 		wc.Fill(&m.grid, Coord{0, 0}, Coord{m.x - 1, m.y - 1})
-		//consd := ConsoleRenderer{
-		//	dest: os.Stdout,
-		//}
-		//svgf, err := os.OpenFile("maze.svg", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-		//if err != nil {
-		//	panic(fmt.Errorf("Couldn't open svg file: %w", err))
-		//}
-		//defer svgf.Close()
 		svgd := SVGRenderer{
 			dest:  w,
 			scale: scale,
 		}
-		//consd.Draw(m)
-		fmt.Print("")
+		w.Header().Add("Content-Type", "image/svg+xml")
 		svgd.Draw(m)
 	})
 	http.Handle("/webui/", http.FileServer(http.FS(staticfs)))
 	if os.Getenv("DEV") == "true" {
 		http.Handle("/devui/",
-			http.StripPrefix("/webui/", http.FileServer(http.Dir("webui/"))),
+			http.StripPrefix("/devui/", http.FileServer(http.Dir("webui/"))),
 		)
 	}
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

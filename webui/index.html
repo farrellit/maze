@@ -1,0 +1,38 @@
+<html charset="UTF-8">
+  <head>
+    <title>Maze Generator</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+    @media print{
+      .noprint{
+         display:none;
+      } 
+    }
+    </style>
+  </head>
+  <body>
+
+    <div id="app">
+      <div class=noprint>
+      <h1>Maze Generator</h1>
+      <p>
+      <input v-model=x type=number></input> X (Horizontal)
+      </p>
+      <p>
+      <input v-model=y type=number></input> Y (Vertical)
+      </p>
+      <p>
+      <input v-model=scale type=number></input> Scale (Size of each block)
+      </p>
+      <p>
+      <input v-model=seed type=number></input> Random Seed <button v-on:click=randomseed title="generate a new random seed">↻</button>
+      </p>
+      </div>
+      <img v-bind:src=svgurl></img>
+    </div>
+    <script src="index.js"></script>
+  </body>
+</html>
