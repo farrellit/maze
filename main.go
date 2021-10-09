@@ -1,17 +1,57 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	//"log"
 	"net/http"
+	"strconv"
 )
 
+//go:embed webui
+var staticfs embed.FS
+
+var (
+	queryParamNotFound = fmt.Errorf("No such query parameter")
+)
+
+func getQueryInt(r *http.Request, key string) (int, error) {
+	if s, ok := r.URL.Query()[key]; !ok {
+		return 0, queryParamNotFound
+	} else {
+		return strconv.Atoi(s[0])
+	}
+
+}
+
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request){
-		m := NewMaze(82, 105)
+	// generate a maze
+	http.HandleFunc("/api/maze", func(w http.ResponseWriter, r *http.Request) {
+		// TODO: shouldn't this be a POST?
+		// I think then redirect to a random maze URL
+		var x, y, scale int
+		var err error
+		if x, err = getQueryInt(r, "x"); err != nil {
+			x = 20
+		}
+		if y, err = getQueryInt(r, "y"); err != nil {
+			y = x * 5 / 4
+		}
+		if scale, err = getQueryInt(r, "s"); err != nil {
+			scale = 25
+		}
+		// limit x and y
+		if x > 128 {
+			x, y = 128, x*128/y
+		}
+		if y > 128 {
+			y = 128
+		}
+		m := NewMaze(x, y)
 		wc := &WalkingCreator{}
 		wc.Fill(&m.grid, Coord{0, 0}, Coord{m.x - 1, m.y - 1})
 		//consd := ConsoleRenderer{
@@ -24,11 +64,20 @@ func main() {
 		//defer svgf.Close()
 		svgd := SVGRenderer{
 			dest:  w,
-			scale: 25,
+			scale: scale,
 		}
 		//consd.Draw(m)
 		fmt.Print("")
 		svgd.Draw(m)
+	})
+	http.Handle("/webui/", http.FileServer(http.FS(staticfs)))
+	if os.Getenv("DEV") == "true" {
+		http.Handle("/devui/",
+			http.StripPrefix("/webui/", http.FileServer(http.Dir("webui/"))),
+		)
+	}
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/webui/", http.StatusSeeOther)
 	})
 	panic(http.ListenAndServe("0.0.0.0:1801", nil))
 }
@@ -240,14 +289,14 @@ func (cc *coordCandidates) filter(f func(Coord) bool) {
 }
 
 const (
-		PassableUp = 1 << iota
-		PassableUpRight
-		PassableRight
-		PassableLowRight
-		PassableLow
-		PassableLowLeft
-		PassableLeft
-		PassableUpLeft
+	PassableUp = 1 << iota
+	PassableUpRight
+	PassableRight
+	PassableLowRight
+	PassableLow
+	PassableLowLeft
+	PassableLeft
+	PassableUpLeft
 )
 
 /*

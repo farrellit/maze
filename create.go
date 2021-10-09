@@ -38,6 +38,7 @@ type MazeCreator interface {
 }
 
 type WalkingCreator struct {
+	seed int64
 }
 
 type walkingCreatorRun struct {
@@ -152,7 +153,10 @@ func (r *walkingCreatorRun) nextCandidateFilterFactory(
 
 func (wc *WalkingCreator) Fill(grid *Grid, start, finish Coord) {
 	var max_passes = grid.Len() * 12
-	rand.Seed(time.Now().UnixNano())
+	if wc.seed == 0 {
+		wc.seed = time.Now().UnixNano()
+	}
+	rand.Seed(wc.seed)
 	grid.Update(MakePassable, start, finish)
 	grid.Update(func(l Loc) Loc {
 		l.Special = l.Special | Start
