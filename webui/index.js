@@ -8,13 +8,13 @@ var app = new Vue({
   },
   methods: {
     randomseed:  function() {
-      this.seed = Math.round(Math.random() * Math.pow(2,64))
+      this.seed = Math.round(Math.random() * Math.pow(2,63))
     },
   },
   computed: {
     svgurl: function() {
-      return "/api/maze?x="+
-        this.x+"&y="+this.y+"&s="+this.scale+"&seed="+this.seed+"&"
+      return "/api/maze/"+
+        this.x+"x"+this.y+"/" + this.seed + "?s="+this.scale
     },
   },
   mounted: function() {

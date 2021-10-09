@@ -1,94 +1,11 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"sync"
-	//"log"
-	"math/rand"
-	"time"
-	"net/http"
-	"strconv"
 )
-
-//go:embed webui
-var staticfs embed.FS
-
-var (
-	queryParamNotFound = fmt.Errorf("No such query parameter")
-)
-
-func getQueryInt(r *http.Request, key string) (int, error) {
-	if s, ok := r.URL.Query()[key]; !ok {
-		return 0, queryParamNotFound
-	} else {
-		return strconv.Atoi(s[0])
-	}
-}
-
-func getQueryInt64(r *http.Request, key string) (int64, error) {
-	if s, ok := r.URL.Query()[key]; !ok {
-		return 0, queryParamNotFound
-	} else {
-		return strconv.ParseInt(s[0], 10, 64)
-	}
-}
-
-func main() {
-	// generate a maze
-	http.HandleFunc("/api/maze", func(w http.ResponseWriter, r *http.Request) {
-		// TODO: shouldn't this be a POST?
-		// I think then redirect to a random maze URL
-		var x, y, scale int
-		var seed int64
-		var err error
-		if x, err = getQueryInt(r, "x"); err != nil {
-			x = 20
-		}
-		if y, err = getQueryInt(r, "y"); err != nil {
-			y = x * 5 / 4
-		}
-		if scale, err = getQueryInt(r, "s"); err != nil {
-			scale = 25
-		}
-		// limit x and y
-		if x > 128 {
-			x, y = 128, x*128/y
-		}
-		if y > 128 {
-			y = 128
-		}
-		if seed, err = getQueryInt64(r, "seed"); err != nil {
-			rand.Seed(time.Now().UnixNano())
-			http.Redirect(w, r,
-				fmt.Sprintf("/api/maze?x=%d&y=%d&s=%d&seed=%d&", x, y, scale, rand.Int63()),
-				http.StatusSeeOther)
-			return
-		}
-		m := NewMaze(x, y)
-		wc := &WalkingCreator{seed: seed}
-		wc.Fill(&m.grid, Coord{0, 0}, Coord{m.x - 1, m.y - 1})
-		svgd := SVGRenderer{
-			dest:  w,
-			scale: scale,
-		}
-		w.Header().Add("Content-Type", "image/svg+xml")
-		svgd.Draw(m)
-	})
-	http.Handle("/webui/", http.FileServer(http.FS(staticfs)))
-	if os.Getenv("DEV") == "true" {
-		http.Handle("/devui/",
-			http.StripPrefix("/devui/", http.FileServer(http.Dir("webui/"))),
-		)
-	}
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/webui/", http.StatusSeeOther)
-	})
-	panic(http.ListenAndServe("0.0.0.0:1801", nil))
-}
 
 type Coord struct {
 	X, Y int
