@@ -106,7 +106,7 @@ func (mr *MazeRequest) SetFromStrings(x, y, scale, seed string) error {
 }
 
 func (mr *MazeRequest) Validate() error {
-	var mindim, maxdim = 3, 128
+	var mindim, maxdim = 3, 256
 	for _, d := range []struct {
 		v int
 		n string

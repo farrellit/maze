@@ -24,6 +24,15 @@ func (sr *SVGRenderer) PosInts(x, y int) (int, int) {
 func (sr *SVGRenderer) Draw(m *Maze) {
 	canvas := svg.New(sr.dest)
 	canvas.Start((m.x+2)*sr.scale, (m.y+2)*sr.scale)
+	canvas.Style("text/css",
+	fmt.Sprintf( `line {
+  stroke-width: %d;
+  stroke: white;
+  stroke-linecap: round;
+  background-color: transparent;
+}`,
+	4 * sr.scale / 5),
+	)
 	// border
 	canvas.Rect(sr.scale/2, sr.scale/2,
 		(m.x+1)*sr.scale, (m.y+1)*sr.scale,
@@ -37,20 +46,13 @@ func (sr *SVGRenderer) Draw(m *Maze) {
 		textstyle =fmt.Sprintf("font-size: %d;", sr.scale/2-1)
 		//d := &Dims{x, y}
 		if loc.Passable {
-			/*canvas.Circle(
-				x+(sr.scale/2),y+(sr.scale/2),
-				sr.scale/2,
-				fmt.Sprintf("stroke-width: %d; stroke: white; stroke-linecap: round" +
-					"fill: white", sr.scale),
-			)
-			*/
 			for _, n := range on {
 				if m.grid.At(n).Passable && n.X >= loc.X && n.Y >= loc.Y {
 					otherx, othery := sr.PosInts(n.X, n.Y)
 					canvas.Line(
 						x+(sr.scale/2),y+(sr.scale/2),
 						otherx+(sr.scale/2), othery+(sr.scale/2),
-						fmt.Sprintf("stroke-width: %d; fill: white; stroke: white; stroke-linecap: round", sr.scale * 4 / 5 ),
+						/*fmt.Sprintf("stroke-width: %d; fill: white; stroke: white; stroke-linecap: round", sr.scale * 4 / 5 ),*/
 					)
 				}
 			}
